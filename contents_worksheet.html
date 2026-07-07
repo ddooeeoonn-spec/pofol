@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>콘텐츠 기획서 자동화 워크시트</title>
+<style>
+body{font-family:Arial,sans-serif;max-width:900px;margin:30px auto;line-height:1.6}
+fieldset{margin:18px 0;padding:16px}
+label{display:block;margin-top:10px;font-weight:bold}
+input,textarea,select{width:100%;padding:8px;box-sizing:border-box}
+button{padding:10px 18px;margin-top:20px}
+#out{white-space:pre-wrap;border:1px solid #ccc;padding:16px;margin-top:20px}
+</style>
+</head>
+<body>
+<h1>콘텐츠 기획서 자동화 워크시트</h1>
+
+<form id="f">
+<fieldset><legend>1. 프로젝트 기본정보</legend>
+<label>프로젝트명<input name="name"></label>
+<label>콘텐츠 유형
+<select name="type">
+<option>영상</option><option>XR</option><option>미디어아트</option><option>전시</option><option>교육</option><option>SNS</option><option>기타</option>
+</select></label>
+</fieldset>
+
+<fieldset><legend>2. 프로젝트 개요</legend>
+<label>목적<textarea name="purpose"></textarea></label>
+<label>기획 배경<textarea name="background"></textarea></label>
+<label>해결하려는 문제<textarea name="problem"></textarea></label>
+<label>기대효과<textarea name="effect"></textarea></label>
+</fieldset>
+
+<fieldset><legend>3. 타겟</legend>
+<label>주요 타겟<input name="target"></label>
+<label>Pain Point<textarea name="pain"></textarea></label>
+<label>Needs<textarea name="needs"></textarea></label>
+</fieldset>
+
+<fieldset><legend>4. 콘텐츠 컨셉</legend>
+<label>핵심 컨셉<textarea name="concept"></textarea></label>
+<label>핵심 메시지<textarea name="message"></textarea></label>
+<label>키워드<input name="keywords"></label>
+<label>톤앤매너<input name="tone"></label>
+</fieldset>
+
+<fieldset><legend>5. 콘텐츠 구성</legend>
+<label>Intro<textarea name="intro"></textarea></label>
+<label>Part 1<textarea name="p1"></textarea></label>
+<label>Part 2<textarea name="p2"></textarea></label>
+<label>Part 3<textarea name="p3"></textarea></label>
+<label>Ending<textarea name="ending"></textarea></label>
+</fieldset>
+
+<fieldset><legend>6. 제작 계획</legend>
+<label>기술/툴<textarea name="tech"></textarea></label>
+<label>일정<textarea name="schedule"></textarea></label>
+<label>예산<textarea name="budget"></textarea></label>
+<label>리스크<textarea name="risk"></textarea></label>
+<label>KPI<textarea name="kpi"></textarea></label>
+</fieldset>
+
+<button type="button" onclick="gen()">기획서 생성</button>
+</form>
+
+<div id="out"></div>
+
+<script>
+function v(n){return document.querySelector('[name='+n+']').value;}
+function gen(){
+let t=`# 콘텐츠 기획서
+
+## 프로젝트 기본정보
+- 프로젝트명: ${v('name')}
+- 콘텐츠 유형: ${v('type')}
+
+## 프로젝트 개요
+- 목적: ${v('purpose')}
+- 기획 배경: ${v('background')}
+- 해결하려는 문제: ${v('problem')}
+- 기대효과: ${v('effect')}
+
+## 타겟
+- 대상: ${v('target')}
+- Pain Point: ${v('pain')}
+- Needs: ${v('needs')}
+
+## 콘텐츠 컨셉
+- 핵심 컨셉: ${v('concept')}
+- 핵심 메시지: ${v('message')}
+- 키워드: ${v('keywords')}
+- 톤앤매너: ${v('tone')}
+
+## 콘텐츠 구성
+1. Intro: ${v('intro')}
+2. Part1: ${v('p1')}
+3. Part2: ${v('p2')}
+4. Part3: ${v('p3')}
+5. Ending: ${v('ending')}
+
+## 제작 계획
+- 기술/툴: ${v('tech')}
+- 일정: ${v('schedule')}
+- 예산: ${v('budget')}
+- 리스크: ${v('risk')}
+- KPI: ${v('kpi')}
+`;
+document.getElementById('out').textContent=t;
+}
+</script>
+</body>
+</html>
