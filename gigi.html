@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>콘텐츠 기획서 자동화 시스템</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg-main: #f8fafc;
+            --bg-card: #ffffff;
+            --text-dark: #0f172a;
+            --text-muted: #64748b;
+            --border: #cbd5e1;
+            --danger: #ef4444;
+            --success: #10b981;
+            --radius: 8px;
+            --shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        body { background-color: var(--bg-main); color: var(--text-dark); display: flex; min-height: 100vh; }
+
+        /* 토스트 알림 */
+        .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
+        .toast { background: var(--text-dark); color: white; padding: 12px 24px; border-radius: var(--radius); box-shadow: var(--shadow); font-size: 14px; animation: fadeIn 0.2s ease; }
+
+        /* 공통 스타일 */
+        button { cursor: pointer; border: none; padding: 10px 16px; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-secondary { background: #e2e8f0; color: var(--text-dark); }
+        .btn-secondary:hover { background: #cbd5e1; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        
+        input, textarea, select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; background: #fff; }
+        input:focus, textarea:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+        .invalid { border-color: var(--danger) !important; background-color: #fef2f2; }
+
+        /* 에디터 레이아웃 */
+        #editor-view { display: flex; width: 100%; }
+        
+        /* 사이드바 */
+        aside { width: 280px; background: #0f172a; color: white; padding: 30px 20px; position: fixed; top:0; bottom:0; display: flex; flex-direction: column; gap: 24px; }
+        aside h2 { font-size: 18px; font-weight: 700; border-bottom: 1px solid #334155; padding-bottom: 15px; }
+        .progress-container { background: #1e293b; padding: 15px; border-radius: var(--radius); }
+        .progress-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; color: #94a3b8; }
+        .progress-bg { background: #334155; height: 6px; border-radius: 3px; overflow: hidden; }
+        .progress-fill { height: 100%; width: 0%; background: var(--success); transition: width 0.3s; }
+        .sidebar-menu { list-style: none; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; }
+        .sidebar-menu a { display: block; color: #cbd5e1; padding: 10px; border-radius: 6px; text-decoration: none; font-size: 14px; }
+        .sidebar-menu a:hover, .sidebar-menu li.active a { background: #1e293b; color: white; }
+
+        /* 메인 콘텐츠 영역 */
+        main { margin-left: 280px; flex: 1; padding: 40px; max-width: 1120px; }
+        .card { background: var(--bg-card); border-radius: var(--radius); padding: 24px; margin-bottom: 24px; box-shadow: var(--shadow); border: 1px solid #e2e8f0; scroll-margin-top: 24px; }
+        .card h3 { font-size: 16px; color: var(--text-dark); margin-bottom: 18px; padding-bottom: 8px; border-bottom: 2px solid #f1f5f9; }
+        
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        .form-item { margin-bottom: 16px; }
+        .form-item label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #334155; }
+        
+        /* 테이블 스타일 */
+        .table-responsive { overflow-x: auto; margin: 10px 0; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+        th { background: #f8fafc; padding: 12px; font-weight: 600; border-bottom: 2px solid #e2e8f0; }
+        td { padding: 8px 12px; border-bottom: 1px solid #e2e8f0; }
+
+        /* 보고서 미리보기 뷰 */
+        #report-view { display: none; width: 100%; background: #64748b; min-height: 100vh; padding: 40px 0; flex-direction: column; align-items: center; }
+        .toolbar { width: 210mm; background: white; padding: 12px 24px; margin-bottom: 20px; border-radius: var(--radius); box-shadow: var(--shadow); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 10px; z-index: 100; }
+        
+        /* A4 종이 규격 스타일링 */
+        .page { width: 210mm; min-height: 297mm; background: white; padding: 20mm; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); position: relative; box-sizing: border-box; display: flex; flex-direction: column; color: #000; }
+        .page-cover { justify-content: center; align-items: center; text-align: center; border: 4px double #1e293b; }
+        .page-cover h1 { font-size: 32px; margin-bottom: 40px; font-weight: 800; line-height: 1.3; }
+        .cover-info { width: 60%; margin-top: 60px; border-top: 1px solid #000; padding-top: 20px; font-size: 15px; text-align: left; line-height: 2; }
+        .cover-info div { display: flex; justify-content: space-between; }
+        
+        .rep-header { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); border-bottom: 1px solid #cbd5e1; padding-bottom: 6px; margin-bottom: 20px; }
+        .rep-footer { position: absolute; bottom: 15mm; left: 0; right: 0; text-align: center; font-size: 11px; color: var(--text-muted); }
+        
+        .rep-content h2 { font-size: 18px; font-weight: 700; border-left: 5px solid var(--text-dark); padding-left: 10px; margin: 24px 0 14px 0; }
+        .rep-content h3 { font-size: 14px; margin: 14px 0 8px 0; color: #334155; }
+        .rep-content p { font-size: 13px; line-height: 1.6; margin-bottom: 10px; text-align: justify; white-space: pre-wrap; }
+        
+        .rep-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; }
+        .rep-table th { background: #f1f5f9 !important; border: 1px solid #94a3b8; padding: 8px; text-align: center; color: #000; }
+        .rep-table td { border: 1px solid #94a3b8; padding: 8px; vertical-align: middle; background: #fff; }
+        .ai-summary { background: #f8fafc; border: 1px dashed var(--border); padding: 15px; border-radius: 6px; font-style: italic; color: var(--text-muted); margin-top: 10px; font-size: 13px; }
+
+        /* 인쇄 미디어 쿼리 */
+        @media print {
+            body { background: white !important; }
+            #editor-view, .toolbar { display: none !important; }
+            #report-view { display: block !important; background: transparent !important; padding: 0 !important; }
+            .page { margin: 0 !important; box-shadow: none !important; page-break-after: always !important; width: 100% !important; height: 100% !important; padding: 20mm !important; }
+            .page:last-child { page-break-after: avoid !important; }
+            .rep-table th { background: #f1f5f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="toast-container" id="toast-box"></div>
+
+    <!-- [1] 입력 화면 구역 -->
+    <div id="editor-view">
+        <aside>
+            <h2>기획서 작성 시스템</h2>
+            <div class="progress-container">
+                <div class="progress-label"><span>작성 진행률</span><span id="prog-txt">0%</span></div>
+                <div class="progress-bg"><div class="progress-fill" id="prog-bar"></div></div>
+            </div>
+            <ul class="sidebar-menu">
+                <li class="active"><a href="#card-base">기본 정보 & 목적</a></li>
+                <li><a href="#card-target">타깃 독자 분석</a></li>
+                <li><a href="#card-strategy">핵심 채널 전략</a></li>
+                <li><a href="#card-detail">콘텐츠 구성 계획</a></li>
+                <li><a href="#card-schedule">일정 및 인력 분장</a></li>
+                <li><a href="#card-budget">소요 예산 계획</a></li>
+                <li><a href="#card-risk">KPI 및 리스크 관리</a></li>
+            </ul>
+        </aside>
+
+        <main>
+            <form id="plan-form" oninput="calculateProgress()">
+                <!-- 기본정보 -->
+                <section class="card" id="card-base">
+                    <h3>1. 프로젝트 기본정보 및 개요</h3>
+                    <div class="grid-3">
+                        <div class="form-item"><label>프로젝트명 *</label><input type="text" id="p-name" required placeholder="프로젝트 이름"></div>
+                        <div class="form-item"><label>담당자 *</label><input type="text" id="p-author" required placeholder="작성자 성명"></div>
+                        <div class="form-item"><label>작성일 *</label><input type="date" id="p-date" required></div>
+                    </div>
+                    <div class="form-item"><label>프로젝트 추진 목적 *</label><textarea id="p-purpose" rows="3" required placeholder="이 프로젝트를 왜 수행해야 하는지 명확한 목적을 작성하세요."></textarea></div>
+                    <div class="form-item"><label>추진 배경 및 필요성 *</label><textarea id="p-bg" rows="3" required placeholder="시장 현황, 문제 제기 등 기획의 배경을 설명하세요."></textarea></div>
+                </section>
+
+                <!-- 타깃 분석 -->
+                <section class="card" id="card-target">
+                    <h3>2. 타깃 고객층 분석</h3>
+                    <div class="grid-3">
+                        <div class="form-item"><label>핵심 타깃 정의 *</label><input type="text" id="t-main" required placeholder="예: 2030 직장인"></div>
+                        <div class="form-item"><label>타깃 연령대 *</label><input type="text" id="t-age" required placeholder="예: 25~34세"></div>
+                        <div class="form-item"><label>주요 직업군 *</label><input type="text" id="t-job" required placeholder="예: 주니어 마케터, IT 직군"></div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-item"><label>Pain Point (핵심 불편사항) *</label><textarea id="t-pain" rows="3" required placeholder="타깃이 현재 겪고 있는 가장 큰 어려움이나 결핍은 무엇인가요?"></textarea></div>
+                        <div class="form-item"><label>Needs (기대 요구 조건) *</label><textarea id="t-needs" rows="3" required placeholder="타깃이 우리 솔루션을 통해 얻고자 하는 가치나 니즈는 무엇인가요?"></textarea></div>
+                    </div>
+                </section>
+
+                <!-- 전략 수립 -->
+                <section class="card" id="card-strategy">
+                    <h3>3. 콘텐츠 핵심 채널 전략</h3>
+                    <div class="grid-3">
+                        <div class="form-item">
+                            <label>콘텐츠 메인 형태 *</label>
+                            <select id="s-type" required>
+                                <option value="">선택하세요</option>
+                                <option value="블로그 상세 포스팅">블로그 상세 포스팅</option>
+                                <option value="숏폼 동영상 콘텐츠">숏폼 동영상 콘텐츠</option>
+                                <option value="인스타그램 카드뉴스">인스타그램 카드뉴스</option>
+                                <option value="뉴스레터 아티클">뉴스레터 아티클</option>
+                            </select>
+                        </div>
+                        <div class="form-item"><label>메인 운영 플랫폼 *</label><input type="text" id="s-platform" required placeholder="예: 네이버 블로그, 유튜브"></div>
+                        <div class="form-item"><label>총 목표 발행량 *</label><input type="text" id="s-count" required placeholder="예: 총 10개 에피소드"></div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-item"><label>핵심 전달 메시지 (Key Message) *</label><textarea id="s-msg" rows="2" required placeholder="독자에게 각인시켜야 할 단 하나의 메시지"></textarea></div>
+                        <div class="form-item"><label>최종 행동 유도 (CTA) 계획 *</label><textarea id="s-cta" rows="2" required placeholder="콘텐츠 소비 후 독자가 취해야 할 행동 (예: 서비스 가입 버튼 클릭)"></textarea></div>
+                    </div>
+                </section>
+
+                <!-- 상세 계획 테이블 -->
+                <section class="card" id="card-detail">
+                    <h3>4. 세부 회차별 콘텐츠 구성안</h3>
+                    <div class="table-responsive">
+                        <table id="t-detail-rows">
+                            <thead>
+                                <tr>
+                                    <th style="width: 8%;">순서</th>
+                                    <th style="width: 25%;">주제 및 가제목 *</th>
+                                    <th style="width: 35%;">상세 아웃라인 기술 *</th>
+                                    <th style="width: 20%;">제작 의도 *</th>
+                                    <th style="width: 12%;">비고</th>
+                                    <th style="width: 5%;">삭제</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td><input type="text" required placeholder="가제목 입력"></td>
+                                    <td><input type="text" required placeholder="주요 스토리라인 및 핵심 내용"></td>
+                                    <td><input type="text" required placeholder="전달 목표"></td>
+                                    <td><input type="text" placeholder="참고자료 등"></td>
+                                    <td><button type="button" class="btn-danger" onclick="removeRow(this)" style="padding:4px 8px;">X</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="button" class="btn-secondary" onclick="addRow('t-detail-rows')">+ 콘텐츠 회차 추가</button>
+                </section>
+
+                <!-- 일정 및 작업 분장 -->
+                <section class="card" id="card-schedule">
+                    <h3>5. 업무 분장 및 마일스톤 계획</h3>
+                    <div class="table-responsive">
+                        <table id="t-schedule-rows">
+                            <thead>
+                                <tr>
+                                    <th>태스크 구분 *</th>
+                                    <th style="width: 18%;">담당 실무자 *</th>
+                                    <th style="width: 18%;">시작일 *</th>
+                                    <th style="width: 18%;">종료일 *</th>
+                                    <th style="width: 12%;">진행률 (%) *</th>
+                                    <th style="width: 5%;">삭제</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><input type="text" required placeholder="예: 기획 및 스크립트 작성"></td>
+                                    <td><input type="text" required placeholder="담당자 이름"></td>
+                                    <td><input type="date" required></td>
+                                    <td><input type="date" required></td>
+                                    <td><input type="number" required min="0" max="100" placeholder="0"></td>
+                                    <td><button type="button" class="btn-danger" onclick="removeRow(this)" style="padding:4px 8px;">X</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="button" class="btn-secondary" onclick="addRow('t-schedule-rows')">+ 업무 분장 추가</button>
+                </section>
+
+                <!-- 예산 수립 계획 -->
+                <section class="card" id="card-budget">
+                    <h3>6. 예산 수립 및 집행 계획</h3>
+                    <div class="table-responsive">
+                        <table id="t-budget-rows">
+                            <thead>
+                                <tr>
+                                    <th style="width: 35%;">지출 예산 항목 구분 *</th>
+                                    <th style="width: 40%;">산출 근거 및 내역 설명 *</th>
+                                    <th style="width: 20%;">금액 (원, 숫자만) *</th>
+                                    <th style="width: 5%;">삭제</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><input type="text" required placeholder="예: 콘텐츠 제작 원고료"></td>
+                                    <td><input type="text" required placeholder="예: 건당 10만원 x 5회"></td>
+                                    <td><input type="number" required class="cost-input" placeholder="0" oninput="updateTotalBudget()"></td>
+                                    <td><button type="button" class="btn-danger" onclick="removeRow(this)" style="padding:4px 8px;">X</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:15px;">
+                        <button type="button" class="btn-secondary" onclick="addRow('t-budget-rows')">+ 예산 지출 항목 추가</button>
+                        <div style="font-size:16px; font-weight:700;">총 편성 예산: <span id="budget-sum" style="color:var(--primary);">0</span> 원</div>
+                    </div>
+                </section>
+
+                <!-- KPI & 리스크 관리 -->
+                <section class="card" id="card-risk">
+                    <h3>7. 성과 목표(KPI) 및 기스크 대책</h3>
+                    <div class="grid-2">
+                        <div>
+                            <label style="display:block; font-size:14px; font-weight:600; margin-bottom:8px;">핵심 성과 지표 (KPI) *</label>
+                            <table id="t-kpi-rows">
+                                <tbody>
+                                    <tr>
+                                        <td><input type="text" required placeholder="목표 KPI (예: 월 방문자수)"></td>
+                                        <td><input type="text" required placeholder="목표치 (예: 20,000명)"></td>
+                                        <td><button type="button" class="btn-danger" onclick="removeRow(this)" style="padding:4px 8px;">X</button></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <button type="button" class="btn-secondary" onclick="addRow('t-kpi-rows')" style="margin-top:8px;">+ KPI 추가</button>
+                        </div>
+                        <div>
+                            <label style="display:block; font-size:14px; font-weight:600; margin-bottom:8px;">예상 리스크 및 대응방안 *</label>
+                            <table id="t-risk-rows">
+                                <tbody>
+                                    <tr>
+                                        <td><input type="text" required placeholder="잠재 리스크 요인"></td>
+                                        <td><input type="text" required placeholder="비상 대응 방안"></td>
+                                        <td><button type="button" class="btn-danger" onclick="removeRow(this)" style="padding:4px 8px;">X</button></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <button type="button" class="btn-secondary" onclick="addRow('t-risk-rows')" style="margin-top:8px;">+ 리스크 추가</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 보고서 빌드 트리거 -->
+                <div style="text-align:right; margin-top:30px;">
+                    <button type="button" class="btn-primary" style="padding:14px 28px; font-size:15px;" onclick="buildReport()">
+                        📋 기획 보고서 빌드 및 미리보기 화면 이동
+                    </button>
+                </div>
+            </form>
+        </main>
+    </div>
+
+    <!-- [2] 보고서 미리보기/인쇄 뷰 구역 -->
+    <div id="report-view">
+        <div class="toolbar">
+            <button type="button" class="btn-secondary" onclick="exitReport()">← 양식 수정하기</button>
+            <div style="display:flex; gap:10px;">
+                <button type="button" class="btn-success" onclick="exportDataJSON()">JSON 백업</button>
+                <button type="button" class="btn-success" onclick="exportReportHTML()">HTML 저장</button>
+                <button type="button" class="btn-primary" onclick="triggerPrint()">PDF / 인쇄하기</button>
+            </div>
+        </div>
+
+        <div id="report-pages-output">
+            <!-- 동적으로 생성된 A4 단위 보고서 규격이 주입되는 구역 -->
+        </div>
+    </div>
+
+    <script>
+        // 전역 상태 마스터 객체 구조 정의
+        let docState = { meta: {}, tables: {} };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            setupSidebarNav();
+            loadCachedData();
+            calculateProgress();
+        });
+
+        function makeToast(msg) {
+            const box = document.getElementById('toast-box');
+            const el = document.createElement('div');
+            el.className = 'toast';
+            el.innerText = msg;
+            box.appendChild(el);
+            setTimeout(() => el.remove(), 2800);
+        }
+
+        function setupSidebarNav() {
+            document.querySelectorAll('.sidebar-menu a').forEach(anchor => {
+                anchor.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if(target) {
+                        target.scrollIntoView({ behavior: 'smooth' });
+                        document.querySelectorAll('.sidebar-menu li').forEach(li => li.classList.remove('active'));
+                        this.parentElement.classList.add('active');
+                    }
+                });
+            });
+        }
+
+        // 행 동적 관리 시스템
+        function addRow(tableId) {
+            const table = document.getElementById(tableId);
+            const tbody = table.querySelector('tbody');
+            const tr = document.createElement('tr');
+
+            if(tableId === 't-detail-rows') {
+                const num = tbody.children.length + 1;
+                tr.innerHTML = `<td>${num}</td><td><input type="text" required placeholder="가제목 입력"></td><td><input type="text" required placeholder="주요 스토리라인 및 핵심 내용"></td><td><input type="text" required placeholder="전달 목표"></td><td><input type="text" placeholder="참고자료 등"></td><td><button type="button" class="btn-danger" onclick="removeRow(this)" style="padding:4px 8px;">X</button></td>`;
+            } else if(tableId === 't-schedule-rows') {
+                tr.innerHTML = `<td><input type="text" required placeholder="작업 구분 명칭"></td><td><input type="text" required placeholder="담당자 이름"></td><td><input type="date" required></td><td><input type="date" required></td><td><input type="number" required min="0" max="100" placeholder="0"></td><td><button type="button" class="btn-danger" onclick="removeRow(this)" style="padding:4px 8px;">X</button></td>`;
+            } else if(tableId === 't-budget-rows') {
+                tr.innerHTML = `<td><input type="text" required placeholder="지출 예산 항목"></td><td><input type="text" required placeholder="산출 세부 내역"></td><td><input type="number" required class="cost-input" placeholder="0" oninput="updateTotalBudget()"></td><td><button type="button" class="btn-danger" onclick="removeRow(this)" style="padding:4px 8px;">X</button></td>`;
+            } else if(tableId === 't-kpi-rows' || tableId === 't-risk-rows') {
+                tr.innerHTML = `<td><input type="text" required placeholder="항목 명칭"></td><td><input type="text" required placeholder="상세 목표 및 대책"></td><td><button type="button" class="btn-danger" onclick="removeRow(this)" style="padding:4px 8px;">X</button></td>`;
+            }
+            tbody.appendChild(tr);
+            calculateProgress();
+        }
+
+        function removeRow(btn) {
+            const tr = btn.closest('tr');
+            const tbody = tr.parentElement;
+            const tid = tbody.closest('table').id;
+            tr.remove();
+
+            if(tid === 't-detail-rows') {
+                Array.from(tbody.children).forEach((row, i) => row.children[0].innerText = i + 1);
+            }
+            if(tid === 't-budget-rows') updateTotalBudget();
+            calculateProgress();
+        }
+
+        function updateTotalBudget() {
+            let sum = 0;
+            document.querySelectorAll('.cost-input').forEach(input => sum += (parseFloat(input.value) || 0));
+            document.getElementById('budget-sum').innerText = sum.toLocaleString('ko-KR');
+            return sum;
+        }
+
+        // 실시간 입력 완료율 연산 프로세스
+        function calculateProgress() {
+            const reqs = document.querySelectorAll('#plan-form [required]');
+            let ok = 0;
+            reqs.forEach(el => {
+                if(el.value.trim() !== "") {
+                    ok++;
+                    el.classList.remove('invalid');
+                } else if(el.classList.contains('touched')) {
+                    el.classList.add('invalid');
+                }
+                
+                if(!el.dataset.eventLinked) {
+                    el.addEventListener('blur', () => { el.classList.add('touched'); calculateProgress(); });
+                    el.dataset.eventLinked = "true";
+                }
+            });
+            const rate = reqs.length ? Math.round((ok / reqs.length) * 100) : 0;
+            document.getElementById('prog-bar').style.width = rate + '%';
+            document.getElementById('prog-txt').innerText = rate + '%';
+        }
+
+        // 데이터 동기화 및 캡처 함수
+        function captureCurrentData() {
+            docState.meta = {
+                pName: document.getElementById('p-name').value,
+                pAuthor: document.getElementById('p-author').value,
+                pDate: document.getElementById('p-date').value,
+                pPurpose: document.getElementById('p-purpose').value,
+                pBg: document.getElementById('p-bg').value,
+                tMain: document.getElementById('t-main').value,
+                tAge: document.getElementById('t-age').value,
+                tJob: document.getElementById('t-job').value,
+                tPain: document.getElementById('t-pain').value,
+                tNeeds: document.getElementById('t-needs').value,
+                sType: document.getElementById('s-type').value,
+                sPlatform: document.getElementById('s-platform').value,
+                sCount: document.getElementById('s-count').value,
+                sMsg: document.getElementById('s-msg').value,
+                sCta: document.getElementById('s-cta').value
+            };
+
+            docState.tables.detail = Array.from(document.querySelectorAll('#t-detail-rows tbody tr')).map(tr => ({
+                idx: tr.children[0].innerText, title: tr.children[1].querySelector('input').value,
+                desc: tr.children[2].querySelector('input').value, purp: tr.children[3].querySelector('input').value, note: tr.children[4].querySelector('input').value
+            }));
+
+            docState.tables.schedule = Array.from(document.querySelectorAll('#t-schedule-rows tbody tr')).map(tr => ({
+                task: tr.children[0].querySelector('input').value, owner: tr.children[1].querySelector('input').value,
+                start: tr.children[2].querySelector('input').value, end: tr.children[3].querySelector('input').value, rate: tr.children[4].querySelector('input').value
+            }));
+
+            docState.tables.budget = Array.from(document.querySelectorAll('#t-budget-rows tbody tr')).map(tr => ({
+                item: tr.children[0].querySelector('input').value, calc: tr.children[1].querySelector('input').value, cost: tr.children[2].querySelector('input').value
+            }));
+
+            docState.tables.kpi = Array.from(document.querySelectorAll('#t-kpi-rows tbody tr')).map(tr => ({
+                metric: tr.children[0].querySelector('input').value, val: tr.children[1].querySelector('input').value
+            }));
+
+            docState.tables.risk = Array.from(document.querySelectorAll('#t-risk-rows tbody tr')).map(tr => ({
+                factor: tr.children[0].querySelector('input').value, measure: tr.children[1].querySelector('input').value
+            }));
+
+            docState.totalBudget = updateTotalBudget();
+            localStorage.setItem('cached_content_plan', JSON.stringify(docState));
+        }
+
+        function loadCachedData() {
+            const raw = localStorage.getItem('cached_content_plan');
+            if(!raw) return;
+            try {
+                const data = JSON.parse(raw);
+                docState = data;
+                
+                // 데이터 매핑 주입
+                for(let k in data.meta) {
+                    const node = document.querySelector(`#plan-form [id="p-${k.substring(1).toLowerCase()}"]`) || document.querySelector(`#plan-form [id="t-${k.substring(1).toLowerCase()}"]`) || document.querySelector(`#plan-form [id="s-${k.substring(1).toLowerCase()}"]`);
+                    const directNode = document.getElementById(({pName:'p-name', pAuthor:'p-author', pDate:'p-date', pPurpose:'p-purpose', pBg:'p-bg', tMain:'t-main', tAge:'t-age', tJob:'t-job', tPain:'t-pain', tNeeds:'t-needs', sType:'s-type', sPlatform:'s-platform', sCount:'s-count', sMsg:'s-msg', sCta:'s-cta'})[k]);
+                    if(directNode) directNode.value = data.meta[k];
+                }
+
+                restoreRows('t-detail-rows', data.tables.detail, (tr, r) => {
+                    tr.children[1].querySelector('input').value = r.title; tr.children[2].querySelector('input').value = r.desc;
+                    tr.children[3].querySelector('input').value = r.purp; tr.children[4].querySelector('input').value = r.note;
+                });
+
+                restoreRows('t-schedule-rows', data.tables.schedule, (tr, r) => {
+                    tr.children[0].querySelector('input').value = r.task; tr.children[1].querySelector('input').value = r.owner;
+                    tr.children[2].querySelector('input').value = r.start; tr.children[3].querySelector('input').value = r.end;
+                    tr.children[4].querySelector('input').value = r.rate;
+                });
+
+                restoreRows('t-budget-rows', data.tables.budget, (tr, r) => {
+                    tr.children[0].querySelector('input').value = r.item; tr.children[1].querySelector('input').value = r.calc;
+                    tr.children[2].querySelector('input').value = r.cost;
+                });
+
+                restoreRows('t-kpi-rows', data.tables.kpi, (tr, r) => {
+                    tr.children[0].querySelector('input').value = r.metric; tr.children[1].querySelector('input').value = r.val;
+                });
+
+                restoreRows('t-risk-rows', data.tables.risk, (tr, r) => {
+                    tr.children[0].querySelector('input').value = r.factor; tr.children[1].querySelector('input').value = r.measure;
+                });
+
+                updateTotalBudget();
+                makeToast('자동 저장된 문서 내역을 가져왔습니다.');
+            } catch(e) { console.error(e); }
+        }
+
+        function restoreRows(tid, arr, fn) {
+            if(!arr || !arr.length) return;
+            const tbody = document.getElementById(tid).querySelector('tbody');
+            tbody.innerHTML = '';
+            arr.forEach((r, i) => {
+                addRow(tid);
+                fn(tbody.children[i], r);
+            });
+        }
+
+        // 필수 항목 유효성 체크 및 기획서 출력 가동
+        function buildReport() {
+            const reqs = document.querySelectorAll('#plan-form [required]');
+            let passed = true;
+            reqs.forEach(el => {
+                if(el.value.trim() === "") { passed = false; el.classList.add('invalid'); }
+            });
+
+            if(!passed) {
+                makeToast('❌ 필수 작성 항목을 다시 확인해 주세요.');
+                const first = document.querySelector('.invalid');
+                if(first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
+
+            captureCurrentData();
+
+            // 리포트 컨테이너 아웃풋 빌딩 시작
+            const out = document.getElementById('report-pages-output');
+            out.innerHTML = '';
+
+            // [PAGE 1 : 정격 표지 문서 구성]
+            const page1 = document.createElement('div');
+            page1.className = 'page page-cover';
+            page1.innerHTML = `
+                <div>
+                    <span style="font-size:14px; letter-spacing:4px; display:block; margin-bottom:20px; color:#475569;">OFFICIAL STRATEGY REPORT</span>
+                    <h1>콘텐츠 기획 개발 추진 계획서</h1>
+                    <div style="font-size:20px; color:#334155; font-weight:600;">[ ${docState.meta.pName} ]</div>
+                </div>
+                <div class="cover-info">
+                    <div><strong>프 젝 트 명 :</strong> <span>${docState.meta.pName}</span></div>
+                    <div><strong>기 획 주 관 :</strong> <span>콘텐츠 전략본부</span></div>
+                    <div><strong>기 획 자 :</strong> <span>${docState.meta.pAuthor}</span></div>
+                    <div><strong>작 성 일 자 :</strong> <span>${docState.meta.pDate}</span></div>
+                </div>
+                <div class="rep-footer">본 기획 문서는 대외비 자료입니다. (Page 1)</div>
+            `;
+            out.appendChild(page1);
+
+            // [PAGE 2 : 전략 수립 개요 및 타깃 페르소나 매트릭스]
+            const page2 = document.createElement('div');
+            page2.className = 'page rep-content';
+            page2.innerHTML = `
+                <div class="rep-header"><span>${docState.meta.pName} - 기획 전략</span><span>CONFIDENTIAL</span></div>
+                <h2>1. 프로젝트 개요 및 추진 목적</h2>
+                <h3>1.1 프로젝트 핵심 목적</h3>
+                <p>${docState.meta.pPurpose}</p>
+                <h3>1.2 추진 기획 배경</h3>
+                <p>${docState.meta.pBg}</p>
+
+                <h2>2. 핵심 타깃 분석 메트릭스</h2>
+                <table class="rep-table">
+                    <thead>
+                        <tr><th>메인 타깃 프로필</th><th>공략 연령대</th><th>주요 분포 직업군</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td style="text-align:center; font-weight:bold;">${docState.meta.tMain}</td><td style="text-align:center;">${docState.meta.tAge}</td><td style="text-align:center;">${docState.meta.tJob}</td></tr>
+                    </tbody>
+                </table>
+                <h3>2.2 타깃별 Pain Point 및 핵심 Needs 요구사항</h3>
+                <table class="rep-table">
+                    <thead><tr><th style="width:50%;">Pain Point (애로 사항)</th><th style="width:50%;">Needs (기대 가치 요구)</th></tr></thead>
+                    <tbody>
+                        <tr><td>${docState.meta.tPain}</td><td>${docState.meta.tNeeds}</td></tr>
+                    </tbody>
+                </table>
+                <div class="rep-footer">(Page 2)</div>
+            `;
+            out.appendChild(page2);
+
+            // [PAGE 3 : 콘텐츠 로드맵 기술 편성표]
+            let rowsDetailHtml = docState.tables.detail.map(r => `<tr><td style="text-align:center;">${r.idx}</td><td style="font-weight:bold;">${r.title}</td><td>${r.desc}</td><td>${r.purp}</td><td>${r.note || '-'}</td></tr>`).join('');
+            const page3 = document.createElement('div');
+            page3.className = 'page rep-content';
+            page3.innerHTML = `
+                <div class="rep-header"><span>${docState.meta.pName} - 구성 로드맵</span><span>CONFIDENTIAL</span></div>
+                <h2>3. 채널 마케팅 및 콘텐츠 기본 배포안</h2>
+                <table class="rep-table">
+                    <tr><th style="width:20%;">콘텐츠 포맷</th><td>${docState.meta.sType}</td><th style="width:20%;">운영 플랫폼</th><td>${docState.meta.sPlatform}</td></tr>
+                    <tr><th>배포 수량</th><td colspan="3">${docState.meta.sCount}</td></tr>
+                    <tr><th>핵심 키 메시지</th><td colspan="3" style="font-weight:600; color:var(--primary);">${docState.meta.sMsg}</td></tr>
+                    <tr><th>목표 행동유도(CTA)</th><td colspan="3">${docState.meta.sCta}</td></tr>
+                </table>
+
+                <h3>3.2 회차별 상세 편성표 로드맵</h3>
+                <table class="rep-table">
+                    <thead><tr><th style="width:7%;">회차</th><th style="width:23%;">가제목</th><th style="width:38%;">아웃라인 구성 내용</th><th style="width:20%;">기획 의도</th><th style="width:12%;">비고</th></tr></thead>
+                    <tbody>${rowsDetailHtml}</tbody>
+                </table>
+                <div class="rep-footer">(Page 3)</div>
+            `;
+            out.appendChild(page3);
+
+            // [PAGE 4 : 운영 자원 배치, 공정 설계, 소요 자금 예산, 성과 통제 거버넌스]
+            let rowsScheduleHtml = docState.tables.schedule.map(r => `<tr><td>${r.task}</td><td style="text-align:center;">${r.owner}</td><td style="text-align:center; font-size:11px;">${r.start} ~ ${r.end}</td><td style="text-align:right; font-weight:600; color:var(--success);">${r.rate}%</td></tr>`).join('');
+            let rowsBudgetHtml = docState.tables.budget.map(r => `<tr><td>${r.item}</td><td>${r.calc}</td><td style="text-align:right; font-weight:600;">${(parseFloat(r.cost)||0).toLocaleString('ko-KR')} 원</td></tr>`).join('');
+            let rowsKpiHtml = docState.tables.kpi.map(r => `<tr><td style="font-weight:600;">${r.metric}</td><td>${r.val}</td></tr>`).join('');
+            let rowsRiskHtml = docState.tables.risk.map(r => `<tr><td style="color:var(--danger); font-weight:600;">${r.factor}</td><td>${r.measure}</td></tr>`).join('');
+
+            const page4 = document.createElement('div');
+            page4.className = 'page rep-content';
+            page4.innerHTML = `
+                <div class="rep-header"><span>${docState.meta.pName} - 집행 거버넌스</span><span>CONFIDENTIAL</span></div>
+                <h2>4. 업무 공정 업무 및 진척 계획</h2>
+                <table class="rep-table">
+                    <thead><tr><th>태스크 프로세스 분류</th><th style="width:15%;">실무자</th><th style="width:30%;">수행 타임라인 일정</th><th style="width:15%;">현재 공정률</th></tr></thead>
+                    <tbody>${rowsScheduleHtml}</tbody>
+                </table>
+
+                <h2>5. 소요 집행 자금 예산 계획</h2>
+                <table class="rep-table">
+                    <thead><tr><th>집행 예산 과목</th><th>상세 산출 내역</th><th style="width:25%;">소요 내역 금액</th></tr></thead>
+                    <tbody>
+                        ${rowsBudgetHtml}
+                        <tr style="background:#f1f5f9; font-weight:700;"><td colspan="2" style="text-align:center;">합 계 집 행 예 산 총 액</td><td style="text-align:right; color:var(--primary); font-size:13px;">${docState.totalBudget.toLocaleString('ko-KR')} 원</td></tr>
+                    </tbody>
+                </table>
+
+                <h2>6. 평가지표 및 위기관리(Risk Contingency) 방안</h2>
+                <div class="grid-2" style="gap:10px;">
+                    <div>
+                        <h3>6.1 정량적 핵심 성과지표 (KPI)</h3>
+                        <table class="rep-table"><thead><tr><th>평가 항목</th><th>목표 기준치</th></tr></thead><tbody>${rowsKpiHtml}</tbody></table>
+                    </div>
+                    <div>
+                        <h3>6.2 리스크 요인 및 방어 방안</h3>
+                        <table class="rep-table"><thead><tr><th>잠재 우려 인자</th><th>위기 헤징 대책</th></tr></thead><tbody>${rowsRiskHtml}</tbody></table>
+                    </div>
+                </div>
+
+                <h2>7. 비즈니스 기대효과 가이드 스페이스</h2>
+                <div class="ai-summary">
+                    본 전략 문서를 기반으로 콘텐츠 파이프라인을 구동하면, 핵심 타깃 독자층인 [ ${docState.meta.tMain} ]의 핵심 페인포인트를 적극적으로 타파함으로써 궁극적인 CTA인 [ ${docState.meta.sCta} ] 가치를 선도할 것으로 예측됩니다. (이 스페이스는 최종 기획 및 AI 비즈니스 서머리를 기입하는 프레임워크 영역입니다.)
+                </div>
+                <div class="rep-footer">(Page 4)</div>
+            `;
+            out.appendChild(page4);
+
+            document.getElementById('editor-view').style.display = 'none';
+            document.getElementById('report-view').style.display = 'flex';
+            window.scrollTo(0,0);
+            makeToast('✨ 완성도 높은 격식형 보고서가 빌드되었습니다.');
+        }
+
+        function exitReport() {
+            document.getElementById('report-view').style.display = 'none';
+            document.getElementById('editor-view').style.display = 'flex';
+            window.scrollTo(0,0);
+        }
+
+        function triggerPrint() {
+            window.print();
+        }
+
+        function exportDataJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(docState, null, 4));
+            const dl = document.createElement('a');
+            dl.setAttribute("href", dataStr);
+            dl.setAttribute("download", `project_data_${docState.meta.pName || 'export'}.json`);
+            dl.click();
+            makeToast('💾 백업용 기획 원본 JSON 데이터가 다운로드되었습니다.');
+        }
+
+        function exportReportHTML() {
+            const wrapHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${docState.meta.pName} - 기획 리포트</title><style>
+            body { background:#64748b; margin:0; padding:40px 0; font-family:sans-serif; display:flex; flex-direction:column; align-items:center; }
+            .page { width:210mm; min-height:297mm; background:white; padding:20mm; margin-bottom:20px; box-sizing:border-box; position:relative; display:flex; flex-direction:column; color:#000; }
+            .page-cover { justify-content:center; align-items:center; text-align:center; border:4px double #1e293b; }
+            .page-cover h1 { font-size:32px; margin-bottom:40px; font-weight:800; }
+            .cover-info { width:60%; margin-top:60px; border-top:1px solid #000; padding-top:20px; font-size:15px; text-align:left; line-height:2; }
+            .rep-header { display:flex; justify-content:space-between; font-size:11px; color:#64748b; border-bottom:1px solid #cbd5e1; padding-bottom:6px; margin-bottom:20px; }
+            .rep-footer { position:absolute; bottom:15mm; left:0; right:0; text-align:center; font-size:11px; color:#64748b; }
+            .rep-content h2 { font-size:18px; border-left:5px solid #0f172a; padding-left:10px; margin:24px 0 14px 0; }
+            .rep-content h3 { font-size:14px; margin:14px 0 8px 0; color:#334155; }
+            .rep-content p { font-size:13px; line-height:1.6; margin-bottom:10px; white-space:pre-wrap; }
+            .rep-table { width:100%; border-collapse:collapse; margin:12px 0; font-size:12px; }
+            .rep-table th { background:#f1f5f9; border:1px solid #94a3b8; padding:8px; text-align:center; }
+            .rep-table td { border:1px solid #94a3b8; padding:8px; background:#fff; }
+            .ai-summary { background:#f8fafc; border:1px dashed #cbd5e1; padding:15px; border-radius:6px; font-style:italic; color:#64748b; font-size:13px; }
+            @media print { body { background:white; padding:0; } .page { margin:0; box-shadow:none; page-break-after:always; width:100%; height:100%; } .rep-table th { background:#f1f5f9 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+            </style></head><body>${document.getElementById('report-pages-output').innerHTML}</body></html>`;
+
+            const blob = new Blob([wrapHtml], { type: "text/html;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const dl = document.createElement('a');
+            dl.setAttribute("href", url);
+            dl.setAttribute("download", `report_${docState.meta.pName || 'archive'}.html`);
+            dl.click();
+            makeToast('🌐 독립 구동형 HTML 보고서가 성공적으로 보존 저장되었습니다.');
+        }
+    </script>
+</body>
+</html>
